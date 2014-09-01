@@ -1,6 +1,4 @@
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
 
@@ -17,20 +15,19 @@ public class GetTorrentDetailedInfo {
 	public static void main(String[] args) throws IOException {
 		Scanner scanner = new Scanner(new File(args[0]));
 		while (scanner.hasNextLine()) {
-			String url = scanner.nextLine();
+			String tid = scanner.nextLine();
 			try {
-				System.out.println(url);
-				Document document = getMoviePage(url);
-				if (document == null) {
-					System.err.println("fail: " + url);
+				System.out.println(tid);
+				TorrentDetailedInfo info = getTorrentDetailedInfo(tid);
+				if (info == null) {
+					System.err.println("fail: " + tid);
 					continue;
 				}
-				String html = parseDetailHTML(document);
-				 System.out.println(html);
+				System.out.println(info.name + "\n" +info.briefIntroduction + "\n" + info.pictureURL);
 
 			} catch (Exception e) {
 				 e.printStackTrace();
-				System.err.println("fail: " + url);
+				System.err.println("fail: " + tid);
 			}
 		}
 
@@ -74,12 +71,46 @@ public class GetTorrentDetailedInfo {
 		return doc;
 	}
 
-	// 解析HTML，获得简介部分
-	public static String parseDetailHTML(Document document) {
+	//获得种子简介的前500个字
+	public static String getTorrentDetailTopCharacter(Document document) {
+        int maxlength = 500;
 		Elements e = document.select("tr#notes.file_info");
 		Element detailLine = e.first().nextElementSibling();
 		Element detail = detailLine.child(1);
-		return detail.html();
+        int length = detail.text().length();
+        if (length > maxlength) length = maxlength;
+		return detail.text().substring(0,length);
 	}
+
+    //获得种子标题
+    public static String getTorrentTitle(Document document) {
+        Elements e = document.select("h3");
+        Element titleLine = e.first();
+        return titleLine.text();
+    }
+
+    //获得种子简介中的第一张图片的url
+    public static String getTorrentPicture(Document document){
+        Elements e = document.select("tr#notes.file_info");
+        Element detailLine = e.first().nextElementSibling();
+        Element detail = detailLine.child(1);
+        Elements imges = detail.getElementsByTag("img");
+        if(imges.size() == 0) return "";
+        Element firstimg = imges.first();
+        if(firstimg == null) return "";
+        
+        return firstimg.attr("src");
+    }
+
+    //根据TID返回种子的简介信息
+    public static TorrentDetailedInfo getTorrentDetailedInfo(String tid){
+        TorrentDetailedInfo info = new TorrentDetailedInfo();
+        Document doc = getMoviePage("http://zijingbt.njuftp.org/stats.html?id=" + tid);
+        info.name = getTorrentTitle(doc);
+        info.briefIntroduction = getTorrentDetailTopCharacter(doc);
+        info.pictureURL = getTorrentPicture(doc);
+        return info;
+    }
+
 
 }
