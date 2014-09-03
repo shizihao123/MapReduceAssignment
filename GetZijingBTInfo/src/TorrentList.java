@@ -15,13 +15,12 @@ package zijing;
  */
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.StringTokenizer;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -31,15 +30,17 @@ import org.apache.hadoop.util.GenericOptionsParser;
 
 public class TorrentList {
 	
-	public static class TorrentMapper extends Mapper<LongWritable, Text, Text, Text>{
+	public static class TorrentMapper extends Mapper<Text, Text, Text, Text>{
 		
 		private Text user = new Text();
 		
-		public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-			StringTokenizer itr = new StringTokenizer(value.toString(), ",");
-			while (itr.hasMoreTokens()) {
-				user.set(itr.nextToken());
-				context.write(user, new Text(key.toString()));
+		public void map(Text key, Text value, Context context) throws IOException, InterruptedException {
+			Text torrentId = key;
+			StringTokenizer user_list = new StringTokenizer(value.toString(), ",");
+			
+			while (user_list.hasMoreTokens()) {
+				user.set(user_list.nextToken());
+				context.write(user, torrentId);
 			}
 		}
 	}
@@ -49,16 +50,15 @@ public class TorrentList {
 		private Text result = new Text();
 
 		public void reduce(Text key, Iterable<Text> values,  Context context) throws IOException, InterruptedException {
-			Iterator<Text> it = values.iterator();
-			StringBuilder torrentList = new StringBuilder();
+			String torrentList = "";
 
-			while (it.hasNext()) {
+			for (Text val:values) {
 				if (torrentList.length() > 0) {
-					torrentList.append(",");
+					torrentList += ",";
 				}
-				torrentList.append(it.next().toString());
+				torrentList += val.toString();
 			}
-			result.set(torrentList.toString());
+			result.set(torrentList);
 			context.write(key, result);
 		}
 	}
@@ -74,6 +74,7 @@ public class TorrentList {
 		job.setJarByClass(TorrentList.class);
 		job.setMapperClass(TorrentMapper.class);
 		job.setReducerClass(TorrentReducer.class);
+		job.setInputFormatClass(KeyValueTextInputFormat.class);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
 		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
