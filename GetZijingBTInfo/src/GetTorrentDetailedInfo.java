@@ -13,7 +13,7 @@ public class GetTorrentDetailedInfo {
 	// TODO Auto-generated method stub
 	// 获得种子的简介信息
 	public static void main(String[] args) throws IOException {
-		Scanner scanner = new Scanner(new File(args[0]));
+		Scanner scanner = new Scanner("40379");
 		while (scanner.hasNextLine()) {
 			String tid = scanner.nextLine();
 			try {
@@ -84,6 +84,10 @@ public class GetTorrentDetailedInfo {
 
     //获得种子标题
     public static String getTorrentTitle(Document document) {
+        if(document.getElementsByClass("not_exist").size() > 0){
+            //该种子并不存在
+            return null;//返回null对象
+        }
         Elements e = document.select("h3");
         Element titleLine = e.first();
         return titleLine.text();
@@ -98,7 +102,7 @@ public class GetTorrentDetailedInfo {
         if(imges.size() == 0) return "";
         Element firstimg = imges.first();
         if(firstimg == null) return "";
-        
+
         return firstimg.attr("src");
     }
 
@@ -107,6 +111,7 @@ public class GetTorrentDetailedInfo {
         TorrentDetailedInfo info = new TorrentDetailedInfo();
         Document doc = getMoviePage("http://zijingbt.njuftp.org/stats.html?id=" + tid);
         info.name = getTorrentTitle(doc);
+        if(info.name == null) return null;//种子不存在时，返回null对象
         info.briefIntroduction = getTorrentDetailTopCharacter(doc);
         info.pictureURL = getTorrentPicture(doc);
         return info;
